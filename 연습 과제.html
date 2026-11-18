@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>기사 프로젝트 노트</title>
+<style>
+  :root{
+    --bg:#ffffff; --text:#37352f; --muted:#9b9a97; --line:#e9e9e7;
+    --soft:#f7f6f3; --accent:#2383e2; --accent-soft:#e7f3f8;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;
+    font-size:17px; line-height:1.6;
+  }
+  .page{max-width:720px; margin:0 auto; padding:36px 20px 80px}
+  h1{font-size:2rem; line-height:1.3; margin:0 0 6px; font-weight:700}
+  .sub{color:var(--muted); font-size:.9rem; margin-bottom:28px}
+  section{margin-bottom:32px}
+  h2{
+    font-size:.85rem; font-weight:600; color:var(--muted);
+    margin:0 0 8px; letter-spacing:.02em;
+    border-bottom:1px solid var(--line); padding-bottom:6px;
+  }
+  .box{
+    background:var(--soft); border-radius:8px; padding:12px 14px;
+    min-height:48px; word-break:keep-all;
+  }
+  .topic{
+    display:inline-block; background:var(--accent-soft); color:#0b6e99;
+    border-radius:6px; padding:3px 12px; font-weight:600;
+  }
+  [contenteditable]{outline:none}
+  [contenteditable]:empty::before{content:attr(data-ph); color:#c3c2bf}
+  [contenteditable]:focus{box-shadow:0 0 0 2px #cfe4f7; border-radius:6px}
+
+  .todo{list-style:none; margin:0; padding:0}
+  .todo li{
+    display:flex; align-items:flex-start; gap:12px;
+    padding:10px 4px; border-bottom:1px solid var(--line);
+  }
+  .todo input[type=checkbox]{
+    width:24px; height:24px; margin-top:3px; flex:none; accent-color:var(--accent);
+  }
+  .todo .t{flex:1; min-height:30px; padding:2px 4px}
+  .todo li.done .t{color:var(--muted); text-decoration:line-through}
+
+  .log{border-bottom:1px solid var(--line); padding:12px 4px}
+  .log .d{font-weight:700; font-size:.95rem; margin-bottom:2px}
+  .log .t{min-height:30px; padding:2px 4px}
+  button{
+    margin-top:12px; font:inherit; font-size:.95rem; color:var(--muted);
+    background:none; border:1px dashed #d3d2cf; border-radius:8px;
+    padding:10px 14px; width:100%; cursor:pointer;
+  }
+  button:hover{background:var(--soft)}
+  @media (max-width:480px){
+    body{font-size:16px}
+    h1{font-size:1.6rem}
+    .page{padding:24px 16px 60px}
+  }
+  @media print{ button{display:none} }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>기사 프로젝트 노트</h1>
+  <div class="sub">칸을 눌러 바로 쓰면 됩니다. 이 기기에 자동 저장돼요.</div>
+
+  <section>
+    <h2>프로젝트 한 줄</h2>
+    <div class="box" id="oneline" contenteditable="true" data-ph="여기에 한 줄을 쓰세요" data-key="oneline">브리프 한 줄</div>
+  </section>
+
+  <section>
+    <h2>주제</h2>
+    <div class="box"><span class="topic">경제</span></div>
+  </section>
+
+  <section>
+    <h2>할 일 체크리스트</h2>
+    <ul class="todo" id="todo"></ul>
+  </section>
+
+  <section>
+    <h2>날짜별 기록</h2>
+    <div id="logs"></div>
+    <button type="button" id="addLog">+ 다음 날짜 추가</button>
+  </section>
+</div>
+
+<script>
+(function(){
+  var KEY = "article-project-note-v1";
+  var data = {};
+  try { data = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch(e){ data = {}; }
+  function save(){ try { localStorage.setItem(KEY, JSON.stringify(data)); } catch(e){} }
+
+  // 프로젝트 한 줄
+  var one = document.getElementById("oneline");
+  if (typeof data.oneline === "string") one.textContent = data.oneline;
+  one.addEventListener("input", function(){ data.oneline = one.textContent; save(); });
+
+  // 체크리스트 5개 (내용은 비워 둠)
+  var todo = document.getElementById("todo");
+  data.todo = data.todo || [];
+  for (var i = 0; i < 5; i++) {
+    (function(i){
+      var item = data.todo[i] || (data.todo[i] = {text:"", done:false});
+      var li = document.createElement("li");
+      var cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = item.done;
+      var t = document.createElement("div"); t.className = "t"; t.contentEditable = "true";
+      t.setAttribute("data-ph", "할 일 " + (i+1)); t.textContent = item.text;
+      if (item.done) li.className = "done";
+      cb.addEventListener("change", function(){
+        item.done = cb.checked; li.className = cb.checked ? "done" : ""; save();
+      });
+      t.addEventListener("input", function(){ item.text = t.textContent; save(); });
+      li.appendChild(cb); li.appendChild(t); todo.appendChild(li);
+    })(i);
+  }
+
+  // 날짜별 기록: 11/18부터
+  var logsEl = document.getElementById("logs");
+  data.logs = data.logs || [{date:"11/18", text:""}];
+  function addRow(entry){
+    var row = document.createElement("div"); row.className = "log";
+    var d = document.createElement("div"); d.className = "d"; d.textContent = entry.date;
+    var t = document.createElement("div"); t.className = "t"; t.contentEditable = "true";
+    t.setAttribute("data-ph", "오늘 한 줄"); t.textContent = entry.text;
+    t.addEventListener("input", function(){ entry.text = t.textContent; save(); });
+    row.appendChild(d); row.appendChild(t); logsEl.appendChild(row);
+  }
+  data.logs.forEach(addRow);
+
+  document.getElementById("addLog").addEventListener("click", function(){
+    var last = data.logs[data.logs.length-1].date.split("/");
+    var dt = new Date(2026, parseInt(last[0],10)-1, parseInt(last[1],10)+1);
+    var entry = {date:(dt.getMonth()+1)+"/"+dt.getDate(), text:""};
+    data.logs.push(entry); addRow(entry); save();
+  });
+})();
+</script>
+</body>
+</html>
